@@ -5,18 +5,16 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue'
+import Vue, { PropType } from 'vue'
+interface Message {
+  message: string;
+  error: boolean;
+}
 export default Vue.extend({
   props: {
     messageObject: {
-      type: Object,
-      required: true,
-      default: function () {
-        return {
-          message: '',
-          error: false
-        }
-      }
+      type: Object as PropType<Message>,
+      required: true
     }
   },
   computed: {
