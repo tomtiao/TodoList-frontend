@@ -1,4 +1,11 @@
 {
   "DELETE_OK": "删除成功",
-  "MODIFY_OK": "修改成功"
+  "MODIFY_OK": "修改成功",
+  "LIST_IS_EMPTY": "待办事项列表是空的",
+  "ADD_TODO": "添加待办事项",
+  "REFRESH": "刷新",
+  "CLEAR": "清空",
+  "SEARCH": "搜索",
+  "SERACH_TODO_HERE": "在这儿搜索待办事项",
+  "LOADING": "加载中……"
 }

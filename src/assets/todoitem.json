@@ -1,0 +1,16 @@
+{
+    "completed": "已完成",
+    "uncompleted": "未完成",
+    "flagIcon": "🚩",
+    "note": "备注",
+    "optionTitle": "详细信息",
+    "cancel": "取消",
+    "confirm": "确定",
+    "reminder": "提醒",
+    "flag": "旗帜",
+    "priority": "优先级",
+    "none": "无",
+    "low": "低",
+    "medium": "中",
+    "high": "高"
+}

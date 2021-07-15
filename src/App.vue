@@ -9,11 +9,9 @@
 import Vue from 'vue'
 import AppToast from './components/AppToast.vue'
 import TodoList from './components/TodoList.vue'
-import { IllegalStateError } from './util/AppError'
-import { Info } from './util/AppMessage'
+import { IllegalStateError, Info } from './util/AppMessage'
 const showTimeout = 5000
 export default Vue.extend({
-  name: 'App',
   components: {
     TodoList,
     AppToast
@@ -60,12 +58,12 @@ export default Vue.extend({
 
 <style>
 #app {
+  max-width: 1300px;
+  text-align: center;
+  color: #2c3e50;
+  margin: 1rem auto;
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin: 60px auto 0 auto;
-  max-width: 1300px;
 }
 </style>
