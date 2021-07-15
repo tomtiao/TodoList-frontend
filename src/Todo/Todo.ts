@@ -7,7 +7,7 @@ const enum Priority {
     High
 }
 
-interface Todo extends Record<string, unknown> {
+interface Todo {
     Id: number;
     Content: string;
     Note: string | null;
@@ -20,19 +20,7 @@ interface Todo extends Record<string, unknown> {
 
 type TodoPartial = { [P in keyof Todo as Exclude<P, 'Id'> & Exclude<P, 'CreationTime'>]?: Todo[P] }
 
-const TodoInstance: Todo = {
-  Id: 0,
-  Content: '',
-  Note: null,
-  CreationTime: 0,
-  ReminderTime: null,
-  Priority: 0,
-  Flagged: false,
-  Completed: false
-} as const
-
 export {
   Todo,
-  TodoPartial,
-  TodoInstance
+  TodoPartial
 }

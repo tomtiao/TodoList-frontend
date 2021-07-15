@@ -1,96 +1,65 @@
 <template>
   <div class="todo-list">
-    <p v-show="loading" class="loading">加载中……</p>
+    <p v-show="loading" class="loading">{{ text.LOADING }}</p>
     <form>
-      <input type="search" id="search-box" v-model="keyword" title="在这儿搜索待办事项" placeholder="在这儿搜索待办事项">
-      <button id="search-button" @click.prevent="refreshList">搜索</button>
-      <button type="reset" @click.prevent="keyword = ''">清空</button>
+      <input type="search" id="search-box" v-model="keyword" :title="text.SERACH_TODO_HERE" :placeholder="text.SERACH_TODO_HERE">
+      <button id="search-button" @click.prevent="refreshList">{{ text.SEARCH }}</button>
+      <button type="reset" @click.prevent="keyword = ''">{{ text.CLEAR }}</button>
     </form>
     <div class="function">
-      <button id="refresh-button" @click="refreshList">刷新</button>
-      <button @click="addTodo">添加待办事项</button>
+      <button id="refresh-button" @click="refreshList">{{ text.REFRESH }}</button>
+      <button @click="addTodo">{{ text.ADD_TODO }}</button>
     </div>
     <template v-if="todos.length > 0">
       <ul>
-        <todo-item v-for="(todo, index) of todos"
+        <todo-item v-for="(todo, i) of todos"
         :key="todo.Id"
-        :todo="todo"
-        @delete-item="removeTodo(index)"
-        @modify-item="modifyTodo(index)"></todo-item>
+        :initialTodo.sync="todos[i]"
+        @delete-item="removeTodo(i)"
+        @modify-item="modifyTodoByIndex(i)"
+        @open-options="openOptions(i)"
+        ></todo-item>
       </ul>
     </template>
     <template v-else>
-      <p>待办事项列表是空的</p>
+      <p>{{ text.LIST_IS_EMPTY }}</p>
     </template>
+    <transition name="pop">
+      <template v-if="currentTodoI !== -1 && showOptions">
+        <item-option
+        :initialTodo.sync="todos[currentTodoI]"
+        @change="modifyTodoByIndex(currentTodoI)"
+        @close-options="closeOptions"
+        id="item-option"
+        ></item-option>
+      </template>
+    </transition>
   </div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
 import TodoItem from './TodoItem.vue'
-import { InvalidRequestError, IllegalStateError, errorEmitter } from '../util/AppError'
-import { messageEmitter } from '../util/AppMessage'
+import ItemOption from './ItemOption.vue'
+import { getTodos, getTodoById, sendAddRequest, sendModifyRequest, sendDeleteRequest } from '../util/TodoRequest'
+import { IllegalStateError, messageEmitter } from '../util/AppMessage'
 import { Todo, TodoPartial } from '../Todo/Todo'
 import APPTEXT from '../assets/todolist.json'
 
-const TODO_API = '/todo'
-async function getTodos (mode: 'all' | 'keyword' = 'all', kw?: string): Promise<Todo[]> {
-  let requestURL = `${TODO_API}`
-  if (mode === 'all') {
-    requestURL = `${TODO_API}`
-  } else if (mode === 'keyword') {
-    requestURL = `${TODO_API}?kw=${kw}`
-  }
-  const res = await fetch(requestURL)
-  if (res.ok) {
-    const objects = await res.json()
-    return objects
-  } else {
-    throw new InvalidRequestError(res.statusText)
-  }
-}
-async function sendDeleteRequest (id: number): Promise<number> {
-  const res = await fetch(`${TODO_API}/${id}`, { method: 'DELETE' })
-  if (res.ok) {
-    const replied = await res.json()
-    return replied
-  } else {
-    throw new InvalidRequestError(res.statusText)
-  }
-}
-async function sendAddRequest (todo: TodoPartial): Promise<string> {
-  const res = await fetch(`${TODO_API}`, { method: 'POST', body: JSON.stringify(todo), headers: { 'content-type': 'application/json' } })
-  if (res.ok) {
-    return res.headers.get('Location') as string
-  } else {
-    throw new InvalidRequestError(res.statusText)
-  }
-}
-async function getTodoById (id: number): Promise<Todo> {
-  const res = await fetch(`${TODO_API}/${id}`)
-  if (res.ok) {
-    const todo = await res.json()
-    return todo
-  } else {
-    throw new InvalidRequestError(res.statusText)
-  }
-}
-async function sendModifyRequest (id: number, todo: TodoPartial): Promise<string> {
-  const res = await fetch(`${TODO_API}/${id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(todo) })
-  if (res.ok) {
-    return res.headers.get('Content-Location') as string
-  } else {
-    throw new InvalidRequestError(res.statusText)
-  }
-}
+type Data = { text: Record<string, string>, todos: Todo[], loading: boolean, keyword: string, currentTodoI: number, showOptions: boolean }
 export default Vue.extend({
-  name: 'TodoList',
-  components: { TodoItem },
-  data: function (): { todos: Todo[], loading: boolean, keyword: string } {
+  components: {
+    TodoItem,
+    ItemOption
+  },
+  data: function (): Data {
     return {
+      text: APPTEXT,
       todos: [],
       loading: false,
-      keyword: ''
+      keyword: '',
+      currentTodoI: -1,
+      showOptions: false
     }
   },
   methods: {
@@ -103,7 +72,7 @@ export default Vue.extend({
           this.todos = await getTodos('keyword', this.keyword)
         }
       } catch (e) {
-        errorEmitter(this, e)
+        messageEmitter(this, e)
       } finally {
         this.loading = false
       }
@@ -120,7 +89,7 @@ export default Vue.extend({
         const createdTodo = await getTodoById(id)
         this.todos.push(createdTodo)
       } catch (e) {
-        errorEmitter(this, e)
+        messageEmitter(this, e)
       }
     },
     removeTodo: async function (i: number) {
@@ -134,11 +103,14 @@ export default Vue.extend({
           throw new IllegalStateError(`Illegal state. Tried to delete ${id}, but got ${replied}.`)
         }
       } catch (e) {
-        errorEmitter(this, e)
+        messageEmitter(this, e)
       }
     },
-    modifyTodo: async function (i: number) {
-      const modifiedTodo = this.todos[i]
+    modifyTodoByIndex (i: number) {
+      this.modifyTodo(this.todos[i])
+    },
+    modifyTodo: async function (todo: Todo) {
+      const modifiedTodo = todo
       const id = modifiedTodo.Id
       try {
         const location = await sendModifyRequest(id, modifiedTodo)
@@ -149,16 +121,22 @@ export default Vue.extend({
           throw new IllegalStateError(`Illegal state. Tried to modify ${id}, but got ${replied}.`)
         }
       } catch (e) {
-        errorEmitter(this, e)
+        messageEmitter(this, e)
       }
+    },
+    openOptions (i: number) {
+      this.currentTodoI = i
+      // TODO: show options
+      this.showOptions = true
+    },
+    closeOptions () {
+      this.showOptions = false
+      console.log('options should be close.')
     }
   },
   created: function () {
-    try {
-      this.refreshList()
-    } catch (e) {
-      errorEmitter(this, e)
-    }
+    this.refreshList()
+      .catch(e => messageEmitter(this, e))
   }
 })
 </script>
@@ -167,5 +145,23 @@ export default Vue.extend({
 ul {
   list-style-type: none;
   padding-left: 0;
+}
+#item-option {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+.pop-enter-active {
+  transition: transform 300ms cubic-bezier(.62,.43,.26,.9);
+}
+.pop-leave-active {
+  transition: transform 300ms cubic-bezier(.48,.15,.33,.71);
+}
+.pop-enter-to {
+  transform: translate(0, 0);
+}
+.pop-enter, .pop-leave-to {
+  transform: translate(0, 100%);
 }
 </style>
